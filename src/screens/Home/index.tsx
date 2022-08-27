@@ -27,18 +27,36 @@ export function Home() {
   const [searchText, setSearchText] = useState('');
   const [searchListData, setSearchListData] = useState<LoginListDataProps>([]);
   const [data, setData] = useState<LoginListDataProps>([]);
+  const dataKey = '@savepass:logins';
 
   async function loadData() {
-    const dataKey = '@savepass:logins';
-    // Get asyncStorage data, use setSearchListData and setData
+    const response = await AsyncStorage.getItem(dataKey);
+    const keys = JSON.parse(response as string);
+
+    if (keys !== null) {
+      setSearchListData(keys)
+      setData(keys)
+    }
   }
 
   function handleFilterLoginData() {
-    // Filter results inside data, save with setSearchListData
+    if (!searchText) return false;
+
+    const filteredKeys = data.filter(key => {
+      if (key.service_name.includes(searchText)) return key
+    })
+
+
+    setSearchListData(filteredKeys)
   }
 
   function handleChangeInputText(text: string) {
-    // Update searchText value
+    if (text === '') {
+      setSearchListData(data)
+      setSearchText('');
+    } else {
+      setSearchText(text);
+    }
   }
 
   useFocusEffect(useCallback(() => {
@@ -67,7 +85,7 @@ export function Home() {
         <Metadata>
           <Title>Suas senhas</Title>
           <TotalPassCount>
-            {searchListData.length
+            {searchListData?.length
               ? `${`${searchListData.length}`.padStart(2, '0')} ao total`
               : 'Nada a ser exibido'
             }

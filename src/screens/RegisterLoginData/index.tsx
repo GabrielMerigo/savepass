@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigation } from '@react-navigation/native';
 import { Alert, KeyboardAvoidingView, Platform } from 'react-native';
-import { useForm } from 'react-hook-form';
+import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
 import { RFValue } from 'react-native-responsive-fontsize';
 import * as Yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -19,6 +19,7 @@ import {
 import { StackNavigationProp } from '@react-navigation/stack';
 
 interface FormData {
+  id: string;
   service_name: string;
   email: string;
   password: string;
@@ -38,26 +39,41 @@ type RootStackParamList = {
 type NavigationProps = StackNavigationProp<RootStackParamList, 'RegisterLoginData'>;
 
 export function RegisterLoginData() {
-  const { navigate } = useNavigation<NavigationProps>()
+  const { navigate } = useNavigation<NavigationProps>();
+  const dataKey = '@savepass:logins';
+
   const {
     control,
-    handleSubmit,
     formState: {
       errors
-    }
+    },
+    handleSubmit,
   } = useForm({
     resolver: yupResolver(schema)
   });
 
-  async function handleRegister(formData: FormData) {
+  async function handleRegister(formData: FormData[]) {
+    let dataKeys: FormData[] = []
+    const existingKeys = await AsyncStorage.getItem(dataKey);
     const newLoginData = {
       id: String(uuid.v4()),
       ...formData
     }
 
-    const dataKey = '@savepass:logins';
+    if (existingKeys === null) {
+      dataKeys.push(newLoginData as any)
+      const newLoginDataFormatted = JSON.stringify(dataKeys)
+      await AsyncStorage.setItem(dataKey, newLoginDataFormatted);
+      navigate("Home")
+    } else {
+      const existingKeysFormatted: FormData[] = JSON.parse(existingKeys);
+      dataKeys = [...existingKeysFormatted];
+      dataKeys.push(newLoginData as any);
+      const allKeysFormatted = JSON.stringify(dataKeys);
 
-    // Save data on AsyncStorage and navigate to 'Home' screen
+      await AsyncStorage.setItem(dataKey, allKeysFormatted);
+      navigate("Home")
+    }
   }
 
   return (
@@ -73,10 +89,7 @@ export function RegisterLoginData() {
             testID="service-name-input"
             title="Nome do serviço"
             name="service_name"
-            error={
-              // Replace here with real content
-              'Has error ? show error message'
-            }
+            error={errors?.service_name && errors.service_name.message}
             control={control}
             autoCapitalize="sentences"
             autoCorrect
@@ -85,10 +98,7 @@ export function RegisterLoginData() {
             testID="email-input"
             title="E-mail ou usuário"
             name="email"
-            error={
-              // Replace here with real content
-              'Has error ? show error message'
-            }
+            error={errors?.email && errors.email.message}
             control={control}
             autoCorrect={false}
             autoCapitalize="none"
@@ -98,10 +108,7 @@ export function RegisterLoginData() {
             testID="password-input"
             title="Senha"
             name="password"
-            error={
-              // Replace here with real content
-              'Has error ? show error message'
-            }
+            error={errors?.password && errors.password.message}
             control={control}
             secureTextEntry
           />
@@ -111,7 +118,7 @@ export function RegisterLoginData() {
               marginTop: RFValue(8)
             }}
             title="Salvar"
-            onPress={handleSubmit(handleRegister)}
+            onPress={handleSubmit(handleRegister as SubmitHandler<FieldValues>)}
           />
         </Form>
       </Container>
